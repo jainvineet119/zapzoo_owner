@@ -141,11 +141,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         int id = menuItem.getItemId();
 
         if(id==R.id.nav_logout){
-
-        }else if(id==R.id.nav_prev_order){
-            startActivity(new Intent(getApplicationContext(), PreviousOrder.class));
-        }else if(id==R.id.nav_min_order){
-            startActivity(new Intent(getApplicationContext(), MinOrder.class));
+            startActivity(new Intent(getApplicationContext(), login.class));
         }else if(id==R.id.nav_online_pay){
             startActivity(new Intent(getApplicationContext(), OnlinePayment.class));
         }else if(id==R.id.nav_banking){

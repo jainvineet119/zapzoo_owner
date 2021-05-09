@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.zapzoo_seller.adapter.AllOrdersAdapter;
@@ -45,6 +46,7 @@ public class AddProductActivity extends AppCompatActivity {
     private ProductListAdapter productListAdapter;
     private SingleProductOnItemClickListener listener;
     private FloatingActionButton fab;
+    private TextView warning;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +63,7 @@ public class AddProductActivity extends AppCompatActivity {
         progressBar = (ProgressBar) findViewById(R.id.progressBar);
         fab = (FloatingActionButton) findViewById(R.id.fab);
 
-        progressBar.setVisibility(View.VISIBLE);
+        warning = (TextView) findViewById(R.id.warning);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -101,6 +103,65 @@ public class AddProductActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+    }
+
+    private void onDelete(int position) {
+        RequestBody formBody = new FormEncodingBuilder()
+                .add("productId", ""+singleProducts.get(position).getId())
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://zapzoo.devsourabh.repl.co/seller/deleteProduct")
+                .post(formBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Request request, IOException e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(AddProductActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Response response) throws IOException {
+                final String res = response.body().string();
+                final int res_code = response.code();
+                //productListAdapter.notifyDataSetChanged();
+                //Log.d("#####", ""+productList.size());
+                if(this != null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            singleProducts.remove(position);
+                            if (singleProducts.size() == 0)
+                            {
+                                warning.setVisibility(View.VISIBLE);
+                            } else {
+                                warning.setVisibility(View.GONE);
+                            }
+                            if(productListAdapter != null) {
+                                productListAdapter.notifyDataSetChanged();
+                                progressBar.setVisibility(View.GONE);
+                            }
+                            //Toast.makeText(getActivity(), ""+res, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+
+            }
+        });
+    }
+
+    void doRefresh()
+    {
+        singleProducts.clear();
+        productListAdapter.notifyDataSetChanged();
+
+        progressBar.setVisibility(View.VISIBLE);
 
         RequestBody formBody = new FormEncodingBuilder()
                 .add("shop_id", preferences.getString("shop_id", ""))
@@ -110,7 +171,7 @@ public class AddProductActivity extends AppCompatActivity {
                 .url("https://zapzoo.devsourabh.repl.co/seller/getProduct")
                 .post(formBody)
                 .build();
-        
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
@@ -154,6 +215,12 @@ public class AddProductActivity extends AppCompatActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (singleProducts.size() == 0)
+                            {
+                                warning.setVisibility(View.VISIBLE);
+                            } else {
+                                warning.setVisibility(View.GONE);
+                            }
                             if(productListAdapter != null) {
                                 productListAdapter.notifyDataSetChanged();
                                 progressBar.setVisibility(View.GONE);
@@ -162,53 +229,14 @@ public class AddProductActivity extends AppCompatActivity {
                         }
                     });
                 }
-                
+
             }
         });
     }
 
-    private void onDelete(int position) {
-        RequestBody formBody = new FormEncodingBuilder()
-                .add("productId", ""+singleProducts.get(position).getId())
-                .build();
-
-        Request request = new Request.Builder()
-                .url("https://zapzoo.devsourabh.repl.co/seller/deleteProduct")
-                .post(formBody)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Request request, IOException e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(AddProductActivity.this, "Network Error", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-
-            @Override
-            public void onResponse(Response response) throws IOException {
-                final String res = response.body().string();
-                final int res_code = response.code();
-                //productListAdapter.notifyDataSetChanged();
-                //Log.d("#####", ""+productList.size());
-                if(this != null) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            singleProducts.remove(position);
-                            if(productListAdapter != null) {
-                                productListAdapter.notifyDataSetChanged();
-                                progressBar.setVisibility(View.GONE);
-                            }
-                            //Toast.makeText(getActivity(), ""+res, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-
-            }
-        });
+    @Override
+    protected void onResume() {
+        super.onResume();
+        doRefresh();
     }
 }

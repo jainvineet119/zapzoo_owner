@@ -3,13 +3,20 @@ package com.example.zapzoo_seller;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -21,6 +28,14 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.example.zapzoo_seller.adapter.OrderProductListAdapter;
 import com.example.zapzoo_seller.models.Product;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.FormEncodingBuilder;
 import com.squareup.okhttp.OkHttpClient;
@@ -39,7 +54,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-public class OrderDetailActivity extends AppCompatActivity {
+public class OrderDetailActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private List<Product> productList;
     private Toolbar toolbar;
@@ -55,6 +70,13 @@ public class OrderDetailActivity extends AppCompatActivity {
     private SharedPreferences preferences;
     private CardView actions;
     private String username;
+    private GoogleMap googleMap;
+    private LocationManager locationManager;
+    private String provider;
+    private Location location;
+    private TextView currentAddress;
+    private MarkerOptions markerOptions;
+    private Marker marker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +121,23 @@ public class OrderDetailActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
+
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+        //locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        //Criteria criteria = new Criteria();
+        //provider = locationManager.getBestProvider(criteria, false);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            //return;
+        }
+        //Log.d("#####", provider);
+        //location = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+        markerOptions = new MarkerOptions()
+                .position(new LatLng(20.5937, 78.9629))
+                .title("You have to deliver here");
+        markerOptions.draggable(true);
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -147,6 +186,25 @@ public class OrderDetailActivity extends AppCompatActivity {
         }
 
         fetchCustomerInfo();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        this.googleMap = googleMap;
+
+        LatLng myloc = new LatLng(20.5937, 78.9629);
+        marker = googleMap.addMarker(markerOptions);
+        googleMap.animateCamera(CameraUpdateFactory.newLatLng(myloc));
     }
 
     private void changeStatus(String s) {
@@ -236,6 +294,15 @@ public class OrderDetailActivity extends AppCompatActivity {
                                 name.setText("Name: "+object.getString("fullname"));
                                 mobileNumber.setText("Customer Mobile: "+object.getString("phoneNumber"));
                                 email.setText("Customer Email: "+object.getString("email"));
+                                LatLng myloc = new LatLng(Double.parseDouble(object.getString("lat")), Double.parseDouble(object.getString("lng")));
+                                marker.setPosition(myloc);
+                                CameraPosition cameraPosition = new CameraPosition.Builder()
+                                        .target(myloc)
+                                        .zoom(17)
+                                        .bearing(90)
+                                        .tilt(30)
+                                        .build();
+                                googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
                                 Glide.with(OrderDetailActivity.this)
                                         .load("https://dummyimage.com/130x130/26c4c1/fff&text="+object.getString("fullname").toString().substring(0, 2))
                                         .into(imageView);

@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.zapzoo_seller.OrderDetailActivity;
@@ -63,6 +64,7 @@ public class ProgressFragment extends Fragment {
     private SharedPreferences preferences;
     private AllOrdersAdapter allOrdersAdapter;
     private AllOrdersItemOnClickListener listener;
+    private TextView warning;
 
     public ProgressFragment() {
         // Required empty public constructor
@@ -105,19 +107,10 @@ public class ProgressFragment extends Fragment {
         recyclerView = (RecyclerView) root.findViewById(R.id.recyclerview);
         progressBar = (ProgressBar) root.findViewById(R.id.progressBar);
 
-        progressBar.setVisibility(View.VISIBLE);
+        warning = (TextView) root.findViewById(R.id.warning);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-
-        RequestBody formBody = new FormEncodingBuilder()
-                .add("shop_id", preferences.getString("shop_id", ""))
-                .build();
-
-        Request request = new Request.Builder()
-                .url("https://zapzoo.devsourabh.repl.co/seller/getOrder/allorders")
-                .post(formBody)
-                .build();
 
         listener = new AllOrdersItemOnClickListener() {
             @Override
@@ -137,6 +130,24 @@ public class ProgressFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(allOrdersAdapter);
+
+        return root;
+    }
+    
+    void doRefresh() {
+        orderList.clear();
+        allOrdersAdapter.notifyDataSetChanged();
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        RequestBody formBody = new FormEncodingBuilder()
+                .add("shop_id", preferences.getString("shop_id", ""))
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://zapzoo.devsourabh.repl.co/seller/getOrder/allorders")
+                .post(formBody)
+                .build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -196,13 +207,24 @@ public class ProgressFragment extends Fragment {
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (orderList.size() == 0)
+                        {
+                            warning.setVisibility(View.VISIBLE);
+                        } else {
+                            warning.setVisibility(View.GONE);
+                        }
                         allOrdersAdapter.notifyDataSetChanged();
                         progressBar.setVisibility(View.GONE);
                     }
                 });
             }
         });
+    }
 
-        return root;
+    @Override
+    public void onResume() {
+        super.onResume();
+        Toast.makeText(getActivity(), "Refreshing...", Toast.LENGTH_SHORT).show();
+        doRefresh();
     }
 }

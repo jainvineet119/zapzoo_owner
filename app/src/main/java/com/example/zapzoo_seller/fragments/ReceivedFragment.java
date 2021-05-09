@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -15,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.zapzoo_seller.OrderDetailActivity;
@@ -33,6 +35,7 @@ import com.squareup.okhttp.Response;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -63,6 +66,7 @@ public class ReceivedFragment extends Fragment {
     private SharedPreferences preferences;
     private AllOrdersAdapter allOrdersAdapter;
     private AllOrdersItemOnClickListener listener;
+    private TextView warning;
 
     public ReceivedFragment() {
         // Required empty public constructor
@@ -105,19 +109,10 @@ public class ReceivedFragment extends Fragment {
         recyclerView = (RecyclerView) root.findViewById(R.id.recyclerview);
         progressBar = (ProgressBar) root.findViewById(R.id.progressBar);
 
-        progressBar.setVisibility(View.VISIBLE);
+        warning = (TextView) root.findViewById(R.id.warning);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-
-        RequestBody formBody = new FormEncodingBuilder()
-                .add("shop_id", preferences.getString("shop_id", ""))
-                .build();
-
-        Request request = new Request.Builder()
-                .url("https://zapzoo.devsourabh.repl.co/seller/getOrder/allorders")
-                .post(formBody)
-                .build();
 
         listener = new AllOrdersItemOnClickListener() {
             @Override
@@ -138,6 +133,25 @@ public class ReceivedFragment extends Fragment {
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(allOrdersAdapter);
 
+        return root;
+    }
+
+    void doRefresh()
+    {
+        orderList.clear();
+        allOrdersAdapter.notifyDataSetChanged();
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        RequestBody formBody = new FormEncodingBuilder()
+                .add("shop_id", preferences.getString("shop_id", ""))
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://zapzoo.devsourabh.repl.co/seller/getOrder/allorders")
+                .post(formBody)
+                .build();
+
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Request request, IOException e) {
@@ -156,6 +170,7 @@ public class ReceivedFragment extends Fragment {
 
                 try {
                     JSONArray jsonArray = new JSONArray(res);
+
                     for(int i=0; i<jsonArray.length(); i++)
                     {
                         JSONObject jsonObject = jsonArray.getJSONObject(i);
@@ -196,13 +211,24 @@ public class ReceivedFragment extends Fragment {
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (orderList.size() == 0)
+                        {
+                            warning.setVisibility(View.VISIBLE);
+                        } else {
+                            warning.setVisibility(View.GONE);
+                        }
                         allOrdersAdapter.notifyDataSetChanged();
                         progressBar.setVisibility(View.GONE);
                     }
                 });
             }
         });
+    }
 
-        return root;
+    @Override
+    public void onResume() {
+        super.onResume();
+        Toast.makeText(getActivity(), "Refreshing...", Toast.LENGTH_SHORT).show();
+        doRefresh();
     }
 }
